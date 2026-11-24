@@ -12,9 +12,10 @@ const int OFFY = 2;             // geser area main ke bawah (ada baris skor di a
 const int OFFX = 2;             // geser area main ke kanan
 const int MAX_PELURU = 15;      // jumlah slot peluru
 const int MAX_MUSUH = 15;       // jumlah slot musuh
-const int NYAWA_AWAL = 3;
+const int NYAWA_AWAL = 10;
 const int JUMLAH_SKOR = 5;      // papan skor menyimpan 5 skor teratas
 const char FILE_SKOR[] = "skor.txt";
+const int JUMLAH_GELOMBANG = 3;
 
 /* ---------- STRUCT ---------- */
 // Satu struct dipakai untuk peluru dan musuh:
@@ -34,7 +35,10 @@ int skor;
 int nyawa;
 int frame;                      // penghitung putaran loop, untuk mengatur kecepatan musuh
 bool rekorBaru;                 // true jika skor sesi ini jadi skor tertinggi
-
+int gelombang;
+int musuhDibuat;
+bool menang;
+bool berhenti;
 
 /* =========================================================
  *  BAGIAN 1: TEXTFILE DAN SORTING (papan skor)
@@ -112,6 +116,10 @@ void resetGame() {
     nyawa = NYAWA_AWAL;
     frame = 0;
     rekorBaru = false;
+    gelombang = 1;
+    musuhDibuat = 0;
+    menang = false;
+    berhenti = false;
 }
 
 // Cari slot peluru yang kosong, lalu aktifkan di depan pesawat.
@@ -126,14 +134,19 @@ void tembak() {
     }
 }
 
-// Munculkan musuh baru di posisi x acak (tidak setiap frame).
+int jumlahMusuhGelombang() {
+    // Gelombang 1: 8 musuh, gelombang 2: 12, gelombang 3: 16.
+    return 8 + (gelombang - 1) * 4;
+}
+
 void munculkanMusuh() {
-    int peluang = 14 - skor / 100;      // makin tinggi skor, makin sering muncul
-    if (peluang < 5) {
-        peluang = 5;
+    if (musuhDibuat >= jumlahMusuhGelombang()) {
+        return;
     }
 
-    if (rand() % peluang != 0) {
+    // Musuh muncul lebih sering di gelombang yang lebih tinggi.
+    int intervalMuncul = 11 - (gelombang - 1) * 3;
+    if (frame % intervalMuncul != 0) {
         return;
     }
 
@@ -142,9 +155,33 @@ void munculkanMusuh() {
             musuh[i].x = rand() % LEBAR;
             musuh[i].y = 0;
             musuh[i].aktif = true;
+            musuhDibuat++;
             return;
         }
     }
+}
+
+void gerakMusuh() {
+    // Musuh turun lebih cepat di setiap gelombang.
+    int kecepatan = 8 - (gelombang - 1) * 2;
+    if (kecepatan < 2) {
+        kecepatan = 2;
+    }
+
+    if (frame % kecepatan != 0) {
+        return;
+    }
+
+    for (int i = 0; i < MAX_MUSUH; i++) {
+        if (musuh[i].aktif) {
+            musuh[i].y++;
+            if (musuh[i].y >= TINGGI) {
+                musuh[i].aktif = false;
+                nyawa--;
+            }
+        }
+    }
+    cekTabrakan();
 }
 
 // Cek peluru kena musuh, dan musuh menabrak pemain.
@@ -214,6 +251,14 @@ void gerakMusuh() {
     cekTabrakan();
 }
 
+bool adaMusuhAktif() {
+    for (int i = 0; i < MAX_MUSUH; i++) {
+        if (musuh[i].aktif) {
+            return true;
+        }
+    }
+    return false;
+}
 
 /* =========================================================
  *  BAGIAN 3: TAMPILAN (ncurses)
@@ -237,8 +282,8 @@ void gambarBingkai() {
 void gambarSemua() {
     erase();
 
-    mvprintw(0, OFFX, "Skor: %d   Nyawa: %d   Skor tertinggi: %d", skor, nyawa, papanSkor[0]);
-    gambarBingkai();
+    mvprintw(0, OFFX, "W:%d/%d HP:%d Skor:%d Rekor:%d",
+         gelombang, JUMLAH_GELOMBANG, nyawa, skor, papanSkor[0]);
 
     // Musuh (merah)
     attron(COLOR_PAIR(1));
@@ -281,8 +326,9 @@ bool tampilMenu() {
     erase();
     mvprintw(2, 10, "=== SPACE SHOOTER ===");
     mvprintw(4, 10, "Hancurkan musuh (V) sebelum sampai bawah!");
-    mvprintw(6, 10, "ENTER = main     Q = keluar");
-    tampilPapanSkor(9);
+mvprintw(6, 10, "Kamu punya 10 HP dan harus melewati 3 gelombang.");
+mvprintw(7, 10, "ENTER = main     Q = keluar");
+tampilPapanSkor(9);
     refresh();
 
     while (true) {
@@ -300,15 +346,13 @@ bool tampilMenu() {
 void tampilGameOver() {
     timeout(-1);
     erase();
+    if (menang) {
+    mvprintw(2, 10, "=== KAMU MENANG! ===");
+} else if (berhenti) {
+    mvprintw(2, 10, "=== PERMAINAN DIHENTIKAN ===");
+} else {
     mvprintw(2, 10, "=== GAME OVER ===");
-    mvprintw(4, 10, "Skor akhir : %d", skor);
-    if (rekorBaru) {
-        mvprintw(5, 10, "SKOR TERTINGGI BARU!");
-    }
-    tampilPapanSkor(8);
-    mvprintw(15, 10, "Tekan sembarang tombol...");
-    refresh();
-    getch();
+}
 }
 
 
@@ -318,11 +362,11 @@ void tampilGameOver() {
 
 void mainkan() {
     resetGame();
-    timeout(50);                        // getch() menunggu maks 50 ms, lalu lanjut (~20 frame/detik)
+    timeout(50);
 
-    while (nyawa > 0) {
-        // 1. INPUT: baca tombol
+    while (nyawa > 0 && gelombang <= JUMLAH_GELOMBANG) {
         int tombol = getch();
+
         if ((tombol == KEY_LEFT || tombol == 'a') && px > 0) {
             px--;
         }
@@ -333,20 +377,27 @@ void mainkan() {
             tembak();
         }
         if (tombol == 'q' || tombol == 'Q') {
+            berhenti = true;
             break;
         }
 
-        // 2. UPDATE: ubah data game
         gerakPeluru();
         gerakMusuh();
         munculkanMusuh();
-        frame++;
 
-        // 3. GAMBAR: tampilkan hasilnya
+        // Lanjut ke gelombang berikutnya setelah semua musuh selesai.
+        if (musuhDibuat >= jumlahMusuhGelombang() && !adaMusuhAktif()) {
+            gelombang++;
+            musuhDibuat = 0;
+            frame = 0;
+        }
+
+        frame++;
         gambarSemua();
     }
 
-    // Setelah loop selesai: cek rekor, lalu simpan skor ke papan
+    menang = (gelombang > JUMLAH_GELOMBANG && nyawa > 0);
+
     if (skor > papanSkor[0]) {
         rekorBaru = true;
     }
@@ -354,6 +405,7 @@ void mainkan() {
         tambahSkor(skor);
     }
 }
+
 
 
 /* =========================================================
