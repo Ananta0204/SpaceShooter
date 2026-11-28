@@ -1,8 +1,6 @@
-# 🚀 Space Shooter - C++ Ncurses Implementation
+# 🚀 Space Shooter
 
-> *Tugas Akhir / Final Project Pengenalan Pemrograman C++*  
-> Game konsol Space Shooter dengan sistem Wave progresif, Boss Fight (30 Detik), Top 5 Highscore, dan Audio.
-
+> *Tugas Akhir Pengenalan Pemrograman*  
 ---
 
 ## 📋 Daftar Isi
@@ -153,11 +151,11 @@ Pastikan struktur berikut tersedia agar program berjalan optimal:
 
 Universitas Lampung
 
-| Nama                      | NPM     |
-| ------------------------- | ------- |
-| Ananta (isi nama lengkap) | Isi NPM |
-| Nama Anggota 2            | Isi NPM |
-| Nama Anggota 3            | Isi NPM |
+| Nama                      | NPM       |
+| ------------------------- | --------- |
+| Firzy Ananta Naufal       | 2617051041|
+| Lidiya Safitri Rustam     | 2617051040|
+| Mutiara Asa Putri Wibowo  | 2617051003|
 
 Dibuat dengan ❤ menggunakan C++
 
