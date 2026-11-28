@@ -165,4 +165,4 @@ Dibuat dengan ❤ menggunakan C++
 
 ## 🎬 Footage Game
 
-<!-- Tarik / paste gambar screenshot dan GIF permainanmu di bawah baris ini saat edit di GitHub -->
+<img width="800" height="450" alt="ezgif-4d53bfbb21a4d8f7" src="https://github.com/user-attachments/assets/5bc278c8-f88f-4e0b-ba9f-07323df2451f" />
